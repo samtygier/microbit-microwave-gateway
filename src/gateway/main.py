@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import asyncio
+import logging
 import struct
 
 from aiohttp import web
@@ -11,27 +12,27 @@ from config import get_config
 config = get_config()
 server_config = config['server']
 serial_config = config['serial']
+logging_config = config['logging']
 
-
+logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
+                    level=logging_config['level'].upper())
 
 async def hello(request):
-    print(f"{request=}")
     return web.Response(text="Hello, world")
 
 async def send(request):
-    print(f"{request=}")
     for i in range(1, 6):
         msg = pack_message("A", i)
-        print(msg)
+        logger.debug("serial write: %s", msg)
         request.app['serial_writer'].write(msg)
         await asyncio.sleep(0.5)
     return web.Response(text="send")
 
 
 async def provision_ids(request):
-    print(f"{request=}")
     msg = pack_message("*", 0, "P")
-    print(msg)
+    logger.debug("serial write: %s", msg)
     request.app['serial_writer'].write(msg)
     return web.Response(text="start provisioning mode")
 
@@ -39,11 +40,12 @@ async def provision_ids(request):
 async def run_serial_comms(app: web.Application):
     reader, writer = await serial_asyncio.open_serial_connection(url=serial_config['dev'],
                                                                  baudrate=serial_config['baudrate'])
-    print(f"Opened serial connections:\n {reader}\n {writer}")
+    logging.debug(f"Opened serial connections: reader : {reader}")
+    logging.debug(f"Opened serial connections: writer : {writer}")
     app['serial_reader'] = reader
     app['serial_writer'] = writer
     yield
-    print("Done")
+    logging.debug("Done")
 
 def pack_message(key: str, to_id: int, value: str | None = None) -> bytes:
     buf = struct.pack("<cL", key[0].encode(encoding='utf-8'), to_id)
