@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <title>Micro:Wave control</title>
+ </head>
+ <body>
+  <script type="module">
+    import { call_wave } from "./gateway.js";
+    window.call_wave = call_wave;
+  </script>
+  <h1>Run wave</h1>
+  <input id="form_wave_start" type="number" value="1">
+  <input id="form_wave_stop" type="number" value="5">
+  <button type="button" onclick="call_wave()">Run</button>
+ </body>
+
+</html>

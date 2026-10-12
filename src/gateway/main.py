@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 import struct
 
 from aiohttp import web
@@ -18,17 +19,30 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
                     level=logging_config['level'].upper())
 
-async def hello(request):
-    return web.Response(text="Hello, world")
+async def index(request):
+    raise web.HTTPFound(location='index.html')
 
 async def send(request):
     for i in range(1, 6):
-        msg = pack_message("A", i)
+        id = RowColToId(1, i)
+        msg = pack_message("A", id)
         logger.debug("serial write: %s", msg)
         request.app['serial_writer'].write(msg)
         await asyncio.sleep(0.5)
     return web.Response(text="send")
 
+async def wave(request: web.Request):
+    body = await request.json()
+    start = int(body["start"])
+    stop = int(body["stop"])
+
+    for i in range(start, stop+1):
+        id = RowColToId(1, i)
+        msg = pack_message("A", id)
+        logger.debug("serial write: %s", msg)
+        request.app['serial_writer'].write(msg)
+        await asyncio.sleep(0.5)
+    return web.Response(text="send")
 
 async def provision_ids(request):
     msg = pack_message("*", 0, "P")
@@ -54,13 +68,18 @@ def pack_message(key: str, to_id: int, value: str | None = None) -> bytes:
 
     return (buf.hex() + "\n").encode(encoding='utf-8')
 
+def RowColToId(row: int, column: int) -> int:
+        return (256 * row) + column
+
 def main():
     app = web.Application()
     app.cleanup_ctx.append(run_serial_comms)
 
-    app.add_routes([web.get('/', hello)])
     app.add_routes([web.get('/send', send)])
+    app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.get('/prov', provision_ids)])
+    app.add_routes([web.get('/', index)])
+    app.add_routes([web.static('/', Path('static'))])
 
     web.run_app(app, host = server_config.get('host', '0.0.0.0'),
                 port = server_config.get('port', 8080))
