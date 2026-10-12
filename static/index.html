@@ -5,13 +5,29 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave } from "./gateway.js";
+    import { call_wave, call_set_config } from "./gateway.js";
     window.call_wave = call_wave;
+    window.call_set_config = call_set_config;
   </script>
   <h1>Run wave</h1>
   <input id="form_wave_start" type="number" value="1">
   <input id="form_wave_stop" type="number" value="5">
   <button type="button" onclick="call_wave()">Run</button>
+
+  <h1>Config</h1>
+
+  <h2>Tone settings</h2>
+  <input id="form_config_volume" type="number" value="127" min="0" max="255">
+  <button type="button" onclick="call_set_config('volume', 'form_config_volume')">Set Volume</button><br>
+
+  <input id="form_config_pitch" type="number" value="1000" min="100" max="5000">
+  <button type="button" onclick="call_set_config('pitch', 'form_config_pitch')">Set Pitch</button><br>
+
+  <input id="form_config_length" type="number" value="200" min="0" max="2000">
+  <button type="button" onclick="call_set_config('length', 'form_config_length')">Set Length</button><br>
+
+  <input id="form_config_count" type="number" value="2" min="1" max="20">
+  <button type="button" onclick="call_set_config('count', 'form_config_count')">Set Count</button><br>
  </body>
 
 </html>

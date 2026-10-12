@@ -29,7 +29,7 @@ async def send(request):
         logger.debug("serial write: %s", msg)
         request.app['serial_writer'].write(msg)
         await asyncio.sleep(0.5)
-    return web.Response(text="send")
+    return web.Response(text="done")
 
 async def wave(request: web.Request):
     body = await request.json()
@@ -42,14 +42,23 @@ async def wave(request: web.Request):
         logger.debug("serial write: %s", msg)
         request.app['serial_writer'].write(msg)
         await asyncio.sleep(0.5)
-    return web.Response(text="send")
+    return web.Response(text="done")
+
+async def set_config(request: web.Request):
+    body = await request.json()
+    for config_name, key in (('volume', 'V'), ('pitch', 'T'), ('length', 'L'), ('count', 'C')):
+        if config_name in body:
+            value = int(body[config_name])
+            msg = pack_message(key, 0, value)
+            logger.debug("serial write: %s", msg)
+            request.app['serial_writer'].write(msg)
+    return web.Response(text="done")
 
 async def provision_ids(request):
     msg = pack_message("*", 0, "P")
     logger.debug("serial write: %s", msg)
     request.app['serial_writer'].write(msg)
     return web.Response(text="start provisioning mode")
-
 
 async def run_serial_comms(app: web.Application):
     reader, writer = await serial_asyncio.open_serial_connection(url=serial_config['dev'],
@@ -65,6 +74,8 @@ def pack_message(key: str, to_id: int, value: str | None = None) -> bytes:
     buf = struct.pack("<cL", key[0].encode(encoding='utf-8'), to_id)
     if isinstance(value, str):
         buf += value.encode(encoding='utf-8')
+    if isinstance(value, int):
+        buf += struct.pack("<L", value)
 
     return (buf.hex() + "\n").encode(encoding='utf-8')
 
@@ -77,6 +88,7 @@ def main():
 
     app.add_routes([web.get('/send', send)])
     app.add_routes([web.post('/wave', wave)])
+    app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.get('/prov', provision_ids)])
     app.add_routes([web.get('/', index)])
     app.add_routes([web.static('/', Path('static'))])
