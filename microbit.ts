@@ -8,7 +8,10 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
         `)
     const message = serial.readUntil(serial.delimiters(Delimiters.NewLine))
     const buf = Buffer.fromHex(message)
-    radio.sendBuffer(buf)
+    for (let i = 0; i < 5; i++) {
+        radio.sendBuffer(buf)
+        control.waitMicros(100)
+    }
     basic.clearScreen()
 })
 basic.showString("GW", 50)
