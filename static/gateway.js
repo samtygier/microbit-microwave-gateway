@@ -20,3 +20,14 @@ export async function call_set_config(config_name, form_name){
     });
 }
 
+export  function gateway_status_check(){
+    fetch("/check", { signal: AbortSignal.timeout(2000) })
+        .then(response => response.json())
+        .then(function(result){
+            document.getElementById("status_gateway").innerText = result['gateway']
+        })
+        .catch((error) => {
+            document.getElementById("status_gateway").innerText = error
+        });
+}
+

@@ -5,9 +5,11 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave, call_set_config } from "./gateway.js";
+    import { call_wave, call_set_config, gateway_status_check } from "./gateway.js";
     window.call_wave = call_wave;
     window.call_set_config = call_set_config;
+
+    setInterval(gateway_status_check, 5000);
   </script>
   <h1>Run wave</h1>
   <input id="form_wave_start" type="number" value="1">
@@ -28,6 +30,9 @@
 
   <input id="form_config_count" type="number" value="2" min="1" max="20">
   <button type="button" onclick="call_set_config('count', 'form_config_count')">Set Count</button><br>
- </body>
 
+  <h1>Status</h1>
+  <p>Gateway: <span id="status_gateway">...</span></p>
+
+ </body>
 </html>
