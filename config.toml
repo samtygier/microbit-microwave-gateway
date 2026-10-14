@@ -8,3 +8,6 @@ baudrate = 115200
 
 [logging]
 level = "debug"
+
+[provisioning]
+path = "provisioning.csv"

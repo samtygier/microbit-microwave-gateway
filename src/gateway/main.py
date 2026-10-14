@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import asyncio
+import datetime as dt
 import logging
 from pathlib import Path
 import struct
@@ -18,6 +19,8 @@ logging_config = config['logging']
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s",
                     level=logging_config['level'].upper())
+
+provision_log_path = Path(config['provisioning']['path'])
 
 GW_SEND = b"GWS"
 GW_CONTROL = b"GWC"
@@ -68,16 +71,45 @@ async def check_status(request: web.Request):
     return web.json_response({"gateway": gateway_status})
 
 async def provision_ids(request):
+    prov_queue = request.app['serial_response_queue_prov']
+    clear_queue(prov_queue)
+    body = await request.json()
     msg = GW_SEND + pack_message("*", 0, "P")
     logger.debug("serial write: %s", msg)
     request.app['serial_writer'].write(msg)
-    return web.Response(text="start provisioning mode")
 
-async def serial_receiver(r, queue: asyncio.Queue):
+    try:
+        received = await asyncio.wait_for(prov_queue.get(), 10)
+        received = received.decode()
+        mb_serial = int(received[4:])
+    except asyncio.TimeoutError:
+        return web.json_response({})
+
+    row, col = body['row'], int(body['col'])
+    logger.debug(f"provision: {mb_serial} to {row}{col}")
+    with provision_log_path.open("a") as prov_log:
+        prov_log.write(f"{dt.datetime.now()},{mb_serial},{row}{col}\n")
+
+    msg = GW_SEND + pack_message("*", mb_serial, "I", RowColToId(row, col))
+    request.app['serial_writer'].write(msg)
+
+    print(f"SAM1: {pack_message("*", mb_serial, "I")}")
+    print(f"SAM2: {pack_message("*", mb_serial, "I", RowColToId(row, col))}")
+
+    logger.debug("serial write: %s", msg)
+    logger.debug(f"serial write: {mb_serial} {RowColToId(row, col)}")
+
+    return web.json_response({})
+
+async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
         msg = await r.readuntil(b'\n')
-        await queue.put(msg.rstrip())
-        logger.debug(f'received: {msg.rstrip().decode()}')
+        msg = msg.rstrip()
+        logger.debug(f'received: {msg.decode()}')
+        if msg.startswith(b"GWC") and len(msg) > 3:
+            key = chr(msg[3])
+            logger.debug(f"put in queue {key}")
+            await queues[key].put(msg.rstrip())
 
 
 async def run_serial_comms(app: web.Application):
@@ -88,21 +120,35 @@ async def run_serial_comms(app: web.Application):
     app['serial_reader'] = reader
     app['serial_writer'] = writer
     app['serial_response_queue_status'] = asyncio.Queue()
-    receiver = asyncio.create_task(serial_receiver(reader, app['serial_response_queue_status']))
+    app['serial_response_queue_prov'] = asyncio.Queue()
+    receiver = asyncio.create_task(serial_receiver(reader, {
+        "H": app['serial_response_queue_status'],
+        "Q": app['serial_response_queue_prov'],
+        }))
     yield
     logger.debug("Done")
 
-def pack_message(key: str, to_id: int, value: str | None = None) -> bytes:
-    buf = struct.pack("<cL", key[0].encode(encoding='utf-8'), to_id)
+def pack_message(key: str, to_id: int, value: str | None = None, extra_val: None | int = None) -> bytes:
+    buf = struct.pack("<cl", key[0].encode(encoding='utf-8'), to_id)
     if isinstance(value, str):
         buf += value.encode(encoding='utf-8')
     if isinstance(value, int):
-        buf += struct.pack("<L", value)
+        buf += struct.pack("<l", value)
+
+    if isinstance(extra_val, int):
+        buf += struct.pack("<l", extra_val)
+
+    logger.debug(f'pack_message: {len(buf)=}: {key=} {to_id=} {value=} {extra_val=}')
 
     return (buf.hex() + "\n").encode(encoding='utf-8')
 
-def RowColToId(row: int, column: int) -> int:
-    return (256 * row) + column
+def RowColToId(row: int| str, col: int) -> int:
+    print(f"RowColToId {row=} {col=}")
+    if isinstance(row, str):
+        row = ord(row[0].lower()) - ord("a") + 1
+
+    print(f"RowColToId {row=} {col=}")
+    return (256 * row) + col
 
 def clear_queue(queue: asyncio.Queue):
     while True:
@@ -118,7 +164,7 @@ def main():
 
     app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.post('/config', set_config)])
-    app.add_routes([web.get('/prov', provision_ids)])
+    app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.get('/check', check_status)])
     app.add_routes([web.get('/', index)])
     app.add_routes([web.static('/', Path('static'))])

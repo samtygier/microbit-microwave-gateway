@@ -20,7 +20,7 @@ export async function call_set_config(config_name, form_name){
     });
 }
 
-export  function gateway_status_check(){
+export async function gateway_status_check(){
     fetch("/check", { signal: AbortSignal.timeout(2000) })
         .then(response => response.json())
         .then(function(result){
@@ -31,3 +31,18 @@ export  function gateway_status_check(){
         });
 }
 
+export async function run_provision(){
+    const row = document.getElementById("form_prov_row").value;
+    const col = document.getElementById("form_prov_col").value;
+    fetch("/prov", {
+                method: "POST",
+        body: `{"row": "${row}", "col": "${col}"}`
+        })
+        .then(response => response.json())
+        .then(function(result){
+
+        })
+        .catch((error) => {
+
+        });
+}
