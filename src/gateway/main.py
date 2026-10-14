@@ -31,15 +31,18 @@ async def index(_):
 
 async def wave(request: web.Request):
     body = await request.json()
+    rows = body["row"].strip()
     start = int(body["start"])
     stop = int(body["stop"])
+    delay = int(body["delay"])
 
     for i in range(start, stop+1):
-        id = RowColToId(1, i)
-        msg = GW_SEND + pack_message("A", id)
-        logger.debug("serial write: %s", msg)
-        request.app['serial_writer'].write(msg)
-        await asyncio.sleep(0.5)
+        for row in rows:
+            id = RowColToId(1, i)
+            msg = GW_SEND + pack_message(row, id)
+            logger.debug("serial write: %s", msg)
+            request.app['serial_writer'].write(msg)
+        await asyncio.sleep(delay / 1000)
     return web.Response(text="done")
 
 async def set_config(request: web.Request):

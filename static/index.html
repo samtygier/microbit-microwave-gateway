@@ -14,8 +14,11 @@
     setInterval(gateway_status_check, 10_000);
   </script>
   <h1>Run wave</h1>
+  <input id="form_wave_row" type="text" value="A">
   <input id="form_wave_start" type="number" value="1">
-  <input id="form_wave_stop" type="number" value="5">
+  <input id="form_wave_stop" type="number" value="5"><br>
+
+  <input id="form_wave_delay" type="number" value="1000"><br>
   <button type="button" onclick="call_wave()">Run</button>
 
   <h1>Config</h1>
