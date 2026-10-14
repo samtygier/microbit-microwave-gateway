@@ -43,7 +43,9 @@ export async function run_provision(){
         })
         .then(response => response.json())
         .then(function(result){
-
+            let element = document.getElementById("prov_log")
+            element.value += "\n" + result['result']
+            element.selectionStart = element.value.length; // Todo make it scroll to end?
         })
         .catch((error) => {
 

@@ -103,7 +103,8 @@ async def provision_ids(request):
     logger.debug("serial write: %s", msg)
     logger.debug(f"serial write: {mb_serial} {RowColToId(row, col)}")
 
-    return web.json_response({})
+    result = f"{mb_serial} -> {row}{col}"
+    return web.json_response({'result': result})
 
 async def provision_ids_send(request):
     id_lookup = load_provisioning()
@@ -114,6 +115,7 @@ async def provision_ids_send(request):
         logger.debug(f"provision_ids_send: {mb_serial=} {row=} {col=} {pos_id=}")
         msg = GW_SEND + pack_message("*", mb_serial, "I", pos_id)
         request.app['serial_writer'].write(msg)
+        await asyncio.sleep(0.5)
 
     return web.json_response({})
 

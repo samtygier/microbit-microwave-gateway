@@ -39,9 +39,11 @@
   <h1>Provision</h1>
 
   <input id="form_prov_row" type="text" value="A" size="2">
-  <input id="form_prov_col" type="number" value="1" min="1" max="20">
+  <input id="form_prov_col" type="number" value="1" min="1" max="50">
   <button type="button" onclick="run_provision()">Collect</button><br>
   <button type="button" onclick="send_provision()">Send</button><br>
+
+  <textarea id="prov_log" name="" rows="5" cols="50"></textarea>
 
   <h1>Status</h1>
   <p>Gateway: <span id="status_gateway">...</span></p>
