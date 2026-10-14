@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import asyncio
+import csv
 import datetime as dt
 import logging
 from pathlib import Path
@@ -101,6 +102,18 @@ async def provision_ids(request):
 
     return web.json_response({})
 
+async def provision_ids_send(request):
+    id_lookup = load_provisioning()
+    logger.debug(f"provision_ids_send: {len(id_lookup)=}")
+    for mb_serial, pos in id_lookup.items():
+        row, col = pos[0], int(pos[1:])
+        pos_id = RowColToId(row, col)
+        logger.debug(f"provision_ids_send: {mb_serial=} {row=} {col=} {pos_id=}")
+        msg = GW_SEND + pack_message("*", mb_serial, "I", pos_id)
+        request.app['serial_writer'].write(msg)
+
+    return web.json_response({})
+
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
         msg = await r.readuntil(b'\n')
@@ -158,6 +171,14 @@ def clear_queue(queue: asyncio.Queue):
         except asyncio.QueueEmpty:
             return
 
+def load_provisioning() -> dict[int, str]:
+    id_lookup = {}
+    with provision_log_path.open() as prov_file:
+        for row in csv.reader(prov_file):
+            _, mb_id, pos = row
+            id_lookup[int(mb_id)] = pos
+    return id_lookup
+
 def main():
     app = web.Application()
     app.cleanup_ctx.append(run_serial_comms)
@@ -165,6 +186,7 @@ def main():
     app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
+    app.add_routes([web.get('/prov_send', provision_ids_send)])
     app.add_routes([web.get('/check', check_status)])
     app.add_routes([web.get('/', index)])
     app.add_routes([web.static('/', Path('static'))])

@@ -5,10 +5,11 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave, call_set_config, gateway_status_check, run_provision } from "./gateway.js";
+    import { call_wave, call_set_config, gateway_status_check, run_provision, send_provision } from "./gateway.js";
     window.call_wave = call_wave;
     window.call_set_config = call_set_config;
     window.run_provision = run_provision;
+    window.send_provision = send_provision;
 
     setInterval(gateway_status_check, 10_000);
   </script>
@@ -36,7 +37,8 @@
 
   <input id="form_prov_row" type="text" value="A" size="2">
   <input id="form_prov_col" type="number" value="1" min="1" max="20">
-  <button type="button" onclick="run_provision()">Run</button><br>
+  <button type="button" onclick="run_provision()">Collect</button><br>
+  <button type="button" onclick="send_provision()">Send</button><br>
 
   <h1>Status</h1>
   <p>Gateway: <span id="status_gateway">...</span></p>

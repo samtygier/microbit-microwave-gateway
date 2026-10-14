@@ -46,3 +46,7 @@ export async function run_provision(){
 
         });
 }
+
+export async function send_provision(){
+    const response = await fetch("/prov_send", { });
+}
