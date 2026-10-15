@@ -5,7 +5,7 @@ serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
         . . . . .
         . . . . .
         . . . . .
-        `)
+        `, 0)
     const message = serial.readUntil(serial.delimiters(Delimiters.NewLine))
     if(message.substr(0, 3) == "GWS"){
         const buf = Buffer.fromHex(message.substr(3))
@@ -25,7 +25,7 @@ function handle_control(message: string){
     switch (message[0]){
         case "H":
             basic.showString("H", 50)
-            serial.writeLine("GWCH")
+            safeSerialWrite("GWCH")
             break
     }
 }
@@ -48,10 +48,14 @@ radio.onReceivedBuffer(function (buf: Buffer){
     serial.writeLine(`GW: msg: ${ikey}`)
     switch(ikey){
         case "Q":
-            serial.writeLine(`GWCQ${from_id}`)
+            safeSerialWrite(`GWCQ${from_id}`)
             break
     }
 })
+
+function safeSerialWrite(msg: string){
+    serial.writeLine(`${msg},${msg}`)
+}
 
 serial.setRxBufferSize(128)
 serial.setTxBufferSize(128)
@@ -59,5 +63,3 @@ basic.showString("GW", 50)
 radio.setGroup(57)
 radio.setTransmitPower(7)
 radio.setTransmitSerialNumber(true)
-
-

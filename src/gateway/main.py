@@ -129,9 +129,13 @@ async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
         msg = msg.rstrip()
         logger.debug(f'received: {msg.decode()}')
         if msg.startswith(b"GWC") and len(msg) > 3:
-            key = chr(msg[3])
+            m1, _, m2 = msg.partition(b",")
+            if m1 != m2:
+                logger.warning(f"Corrupt serial message: {m1} != {m2}")
+                continue
+            key = chr(m1[3])
             logger.debug(f"put in queue {key}")
-            await queues[key].put(msg.rstrip())
+            await queues[key].put(m1.rstrip())
 
 
 async def run_serial_comms(app: web.Application):
