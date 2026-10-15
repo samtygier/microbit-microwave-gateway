@@ -46,7 +46,8 @@ export async function run_provision(){
         .then(function(result){
             let element = document.getElementById("prov_log")
             element.value += "\n" + result['result']
-            element.selectionStart = element.value.length; // Todo make it scroll to end?
+            element.selectionStart = element.value.length;
+            document.getElementById("form_prov_col").value = Number(col) + 1
         })
         .catch((error) => {
 
