@@ -38,8 +38,9 @@ export async function run_provision(){
     const row = document.getElementById("form_prov_row").value;
     const col = document.getElementById("form_prov_col").value;
     fetch("/prov", {
-                method: "POST",
-        body: `{"row": "${row}", "col": "${col}"}`
+            method: "POST",
+            body: `{"row": "${row}", "col": "${col}"}`,
+            signal: AbortSignal.timeout(5000)
         })
         .then(response => response.json())
         .then(function(result){
@@ -53,5 +54,9 @@ export async function run_provision(){
 }
 
 export async function send_provision(){
-    const response = await fetch("/prov_send", { });
+    const prov_only = document.getElementById("form_prov_only").value;
+    const response = await fetch("/prov_send", {
+            method: "POST",
+            body: `{"prov_only": "${prov_only}"}`
+        });
 }

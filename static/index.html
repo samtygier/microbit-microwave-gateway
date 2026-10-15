@@ -11,7 +11,7 @@
     window.run_provision = run_provision;
     window.send_provision = send_provision;
 
-    setInterval(gateway_status_check, 10_000);
+    setInterval(gateway_status_check, 20_000);
   </script>
   <h1>Run wave</h1>
   <input id="form_wave_row" type="text" value="A">
@@ -41,6 +41,8 @@
   <input id="form_prov_row" type="text" value="A" size="2">
   <input id="form_prov_col" type="number" value="1" min="1" max="50">
   <button type="button" onclick="run_provision()">Collect</button><br>
+
+  <input id="form_prov_only" type="text" value="A" size="5">
   <button type="button" onclick="send_provision()">Send</button><br>
 
   <textarea id="prov_log" name="" rows="5" cols="50"></textarea>

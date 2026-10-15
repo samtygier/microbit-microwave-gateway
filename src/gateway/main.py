@@ -38,8 +38,8 @@ async def wave(request: web.Request):
 
     for i in range(start, stop+1):
         for row in rows:
-            id = RowColToId(1, i)
-            msg = GW_SEND + pack_message(row, id)
+            id = RowColToId(row, i)
+            msg = GW_SEND + pack_message("A", id)
             logger.debug("serial write: %s", msg)
             request.app['serial_writer'].write(msg)
         await asyncio.sleep(delay / 1000)
@@ -107,9 +107,13 @@ async def provision_ids(request):
     return web.json_response({'result': result})
 
 async def provision_ids_send(request):
+    body = await request.json()
+    prov_only = body["prov_only"]
     id_lookup = load_provisioning()
     logger.debug(f"provision_ids_send: {len(id_lookup)=}")
     for mb_serial, pos in id_lookup.items():
+        if prov_only and not prov_only in pos:
+            continue
         row, col = pos[0], int(pos[1:])
         pos_id = RowColToId(row, col)
         logger.debug(f"provision_ids_send: {mb_serial=} {row=} {col=} {pos_id=}")
@@ -180,6 +184,8 @@ def load_provisioning() -> dict[int, str]:
     id_lookup = {}
     with provision_log_path.open() as prov_file:
         for row in csv.reader(prov_file):
+            if len(row) == 0 or row[0][0] == "#":
+                continue
             _, mb_id, pos = row
             id_lookup[int(mb_id)] = pos
     return id_lookup
@@ -191,7 +197,7 @@ def main():
     app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
-    app.add_routes([web.get('/prov_send', provision_ids_send)])
+    app.add_routes([web.post('/prov_send', provision_ids_send)])
     app.add_routes([web.get('/check', check_status)])
     app.add_routes([web.get('/', index)])
     app.add_routes([web.static('/', Path('static'))])
@@ -199,5 +205,54 @@ def main():
     web.run_app(app, host = server_config.get('host', '0.0.0.0'),
                 port = server_config.get('port', 8080))
 
+def check_provisioning():
+    by_serial = {}
+    by_pos = {}
+    with provision_log_path.open() as prov_file:
+        for row in csv.reader(prov_file):
+            if len(row) == 0 or row[0][0] == "#":
+                continue
+            _, serial, pos = row
+            pair = (serial, pos)
+
+            if serial in by_serial:
+                old_pair = by_serial[serial]
+                if pair == old_pair:
+                    print(f"Dupe for {serial}: {old_pair} ~~ {pair}")
+                else:
+                    print(f"Conflict for {serial}: {old_pair} ~~ {pair}")
+
+            if pos in by_pos:
+                old_pair = by_pos[pos]
+                if pair == old_pair:
+                    print(f"Dupe for {pos}: {old_pair} ~~ {pair}")
+                else:
+                    print(f"Conflict for {pos}: {old_pair} ~~ {pair}")
+
+            if not (-2**31 < int(serial) < 2**31):
+                print(f"Serial not in int32 range: {serial}")
+
+            by_serial[serial] = (serial, pos)
+            by_pos[pos] = (serial, pos)
+
+    rows = {pos[0] for pos in by_pos}
+    rows = sorted(list(rows))
+    cols = {int(pos[1:]) for pos in by_pos}
+    cols = sorted(list(cols))
+    print(f"{rows}")
+    print(f"{cols}")
+    for row in reversed(rows):
+        print(f"{row}: ", end="")
+        for col in cols:
+            pos = f"{row}{col}"
+            if pos in by_pos:
+                print(f"{col} ", end="")
+            else:
+                print(f"{"_"*len(str(col))} ", end="")
+        print()
+
+
+
 if __name__ == "__main__":
+    check_provisioning()
     main()
