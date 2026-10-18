@@ -7,6 +7,7 @@ import json
 import logging
 from pathlib import Path
 import struct
+import time
 
 from aiohttp import web
 import numpy
@@ -61,23 +62,17 @@ async def set_config(request: web.Request):
     return web.Response(text="done")
 
 async def check_status(request: web.Request):
-    rec_queue = request.app['serial_response_queue_status']
-    clear_queue(rec_queue)
-    msg = GW_CONTROL + b"H\n"
-    logger.debug("serial write: %s", msg)
-    request.app['serial_writer'].write(msg)
+    now = time.monotonic()
+    stale = now - 30
+    heartbeats = request.app['gateway']['heartbeats']
 
-    try:
-        received = await asyncio.wait_for(rec_queue.get(), 1)
-        received = received.decode()
-    except asyncio.TimeoutError:
-        received = ""
-    if received == "GWCH":
-        gateway_status = "Good"
+    status_result = {}
+    if heartbeats['gateway'] > stale:
+        status_result['gateway'] = "Good"
     else:
-        gateway_status = "Bad"
+        status_result['gateway'] = f"Last heartbeat {int(now - heartbeats['gateway'])}s ago"
 
-    return web.json_response({"gateway": gateway_status})
+    return web.json_response(status_result)
 
 async def provision_ids(request):
     prov_queue = request.app['serial_response_queue_prov']
@@ -154,20 +149,48 @@ async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
             logger.debug(f"put in queue {key}")
             await queues[key].put(m1.rstrip())
 
+async def gateway_heartbeat(writer):
+    while True:
+        msg = GW_CONTROL + b"H\n"
+        logger.debug("serial write: %s", msg)
+        writer.write(msg)
+        await asyncio.sleep(15)
+
+async def gateway_heartbeat_watch(status_queue, heartbeats):
+    while True:
+        received = await status_queue.get()
+        received = received.decode()
+
+        if received == "GWCH":
+            heartbeats['gateway'] = time.monotonic()
+
 
 async def run_serial_comms(app: web.Application):
     reader, writer = await serial_asyncio.open_serial_connection(
         url=serial_config['dev'], baudrate=serial_config['baudrate'])
     logger.debug(f"Opened serial connections: reader : {reader}")
     logger.debug(f"Opened serial connections: writer : {writer}")
-    app['serial_reader'] = reader
-    app['serial_writer'] = writer
-    app['serial_response_queue_status'] = asyncio.Queue()
-    app['serial_response_queue_prov'] = asyncio.Queue()
-    receiver = asyncio.create_task(serial_receiver(reader, {
-        "H": app['serial_response_queue_status'],
-        "Q": app['serial_response_queue_prov'],
+
+
+    gateway_data = {}
+    gateway_data['serial_reader'] = reader
+    gateway_data['serial_writer'] = writer
+
+    queue_status = asyncio.Queue()
+    queue_prov = asyncio.Queue()
+
+    gateway_data['serial_response_queue_status'] = queue_status
+    gateway_data['serial_response_queue_prov'] = queue_prov
+    sr_task = asyncio.create_task(serial_receiver(reader, {
+        "H": queue_status,
+        "Q": queue_prov,
         }))
+
+    gateway_data['heartbeats'] = {'gateway': 0}
+    hb_task = asyncio.create_task(gateway_heartbeat(writer))
+    hbw_task = asyncio.create_task(gateway_heartbeat_watch(queue_status, gateway_data['heartbeats']))
+
+    app['gateway'] = gateway_data
     yield
     logger.debug("Done")
 

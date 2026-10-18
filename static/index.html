@@ -11,6 +11,7 @@
     window.run_provision = run_provision;
     window.send_provision = send_provision;
 
+    setTimeout(gateway_status_check, 1000)
     setInterval(gateway_status_check, 20_000);
   </script>
   <h1>Run wave</h1>
