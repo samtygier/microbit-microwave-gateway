@@ -72,6 +72,9 @@ async def check_status(request: web.Request):
     else:
         status_result['gateway'] = f"Last heartbeat {int(now - heartbeats['gateway'])}s ago"
 
+    pattern_shape = request.app['gateway']['pattern']['frames'].shape
+    status_result["pattern_info"] = f"{pattern_shape[0]}x{pattern_shape[1]} {pattern_shape[2]} frames"
+
     return web.json_response(status_result)
 
 async def provision_ids(request):
@@ -133,6 +136,7 @@ async def set_pattern(request):
     logger.info(f"Received pattern {pattern_arr.shape=}")
     #print(pattern_arr[:,:,0]) # frame zero
 
+    request.app['gateway']['pattern']['frames'] = pattern_arr
     return web.json_response({}, headers=CORS_HEADER)
 
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
@@ -189,6 +193,8 @@ async def run_serial_comms(app: web.Application):
     gateway_data['heartbeats'] = {'gateway': 0}
     hb_task = asyncio.create_task(gateway_heartbeat(writer))
     hbw_task = asyncio.create_task(gateway_heartbeat_watch(queue_status, gateway_data['heartbeats']))
+
+    gateway_data['pattern'] = {"frames": numpy.array([[[0]]])}
 
     app['gateway'] = gateway_data
     yield
