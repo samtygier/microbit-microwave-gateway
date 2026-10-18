@@ -132,12 +132,30 @@ async def set_pattern(request):
     rows = int(body['rows'])
     cols = int(body['cols'])
     pattern_arr = numpy.array(pattern).reshape(rows, cols, -1)
+    pattern_arr = numpy.flip(pattern_arr, axis=0)
 
     logger.info(f"Received pattern {pattern_arr.shape=}")
     #print(pattern_arr[:,:,0]) # frame zero
 
     request.app['gateway']['pattern']['frames'] = pattern_arr
+
+    for i in range(pattern_arr.shape[2]):
+        await show_pattern_frame(pattern_arr[:,:,i], request.app['gateway']['serial_writer'])
+        await asyncio.sleep(0.5)
+
     return web.json_response({}, headers=CORS_HEADER)
+
+async def show_pattern_frame(frame: numpy.typing.NDArray, writer):
+    if frame.ndim != 2:
+        raise ValueError("frame should be 2D")
+
+    for row in range(frame.shape[0]):
+        for col in range(frame.shape[1]):
+            if frame[row, col] == 1:
+                id = RowColToId(row+1, col+1)
+                msg = GW_SEND + pack_message("A", id)
+                logger.debug("serial write: %s", msg)
+                writer.write(msg)
 
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
@@ -219,7 +237,6 @@ def RowColToId(row: int| str, col: int) -> int:
     if isinstance(row, str):
         row = ord(row[0].lower()) - ord("a") + 1
 
-    print(f"RowColToId {row=} {col=}")
     return (256 * row) + col
 
 def clear_queue(queue: asyncio.Queue):
