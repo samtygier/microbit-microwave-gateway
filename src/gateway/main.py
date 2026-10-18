@@ -41,24 +41,22 @@ async def wave(request: web.Request):
     start = int(body["start"])
     stop = int(body["stop"])
     delay = int(body["delay"])
+    writer = request.app['gateway']['serial_writer']
 
     for i in range(start, stop+1):
         for row in rows:
             id = RowColToId(row, i)
-            msg = GW_SEND + pack_message("A", id)
-            logger.debug("serial write: %s", msg)
-            request.app['serial_writer'].write(msg)
+            serial_write(writer, GW_SEND + pack_message("A", id))
         await asyncio.sleep(delay / 1000)
     return web.Response(text="done")
 
 async def set_config(request: web.Request):
     body = await request.json()
+    writer = request.app['gateway']['serial_writer']
     for config_name, key in (('volume', 'V'), ('pitch', 'T'), ('length', 'L'), ('count', 'C')):
         if config_name in body:
             value = int(body[config_name])
-            msg = GW_SEND + pack_message(key, 0, value)
-            logger.debug("serial write: %s", msg)
-            request.app['serial_writer'].write(msg)
+            serial_write(writer, GW_SEND + pack_message(key, 0, value))
     return web.Response(text="done")
 
 async def check_status(request: web.Request):
@@ -81,9 +79,8 @@ async def provision_ids(request):
     prov_queue = request.app['serial_response_queue_prov']
     clear_queue(prov_queue)
     body = await request.json()
-    msg = GW_SEND + pack_message("*", 0, "P")
-    logger.debug("serial write: %s", msg)
-    request.app['serial_writer'].write(msg)
+    writer = request.app['gateway']['serial_writer']
+    serial_write(writer, GW_SEND + pack_message("*", 0, "P"))
 
     try:
         received = await asyncio.wait_for(prov_queue.get(), 10)
@@ -97,14 +94,7 @@ async def provision_ids(request):
     with provision_log_path.open("a") as prov_log:
         prov_log.write(f"{dt.datetime.now()},{mb_serial},{row}{col}\n")
 
-    msg = GW_SEND + pack_message("*", mb_serial, "I", RowColToId(row, col))
-    request.app['serial_writer'].write(msg)
-
-    print(f"SAM1: {pack_message("*", mb_serial, "I")}")
-    print(f"SAM2: {pack_message("*", mb_serial, "I", RowColToId(row, col))}")
-
-    logger.debug("serial write: %s", msg)
-    logger.debug(f"serial write: {mb_serial} {RowColToId(row, col)}")
+    serial_write(writer, GW_SEND + pack_message("*", mb_serial, "I", RowColToId(row, col)))
 
     result = f"{mb_serial} -> {row}{col}"
     return web.json_response({'result': result})
@@ -114,15 +104,15 @@ async def provision_ids_send(request):
     prov_only = body["prov_only"]
     id_lookup = load_provisioning()
     logger.debug(f"provision_ids_send: {len(id_lookup)=}")
+    writer = request.app['gateway']['serial_writer']
     for mb_serial, pos in id_lookup.items():
         if prov_only and not prov_only in pos:
             continue
         row, col = pos[0], int(pos[1:])
         pos_id = RowColToId(row, col)
         logger.debug(f"provision_ids_send: {mb_serial=} {row=} {col=} {pos_id=}")
-        msg = GW_SEND + pack_message("*", mb_serial, "I", pos_id)
-        request.app['serial_writer'].write(msg)
-        await asyncio.sleep(0.5)
+        serial_write(writer, GW_SEND + pack_message("*", mb_serial, "I", pos_id))
+        await asyncio.sleep(0.1)
 
     return web.json_response({})
 
@@ -153,9 +143,7 @@ async def show_pattern_frame(frame: numpy.typing.NDArray, writer):
         for col in range(frame.shape[1]):
             if frame[row, col] == 1:
                 id = RowColToId(row+1, col+1)
-                msg = GW_SEND + pack_message("A", id)
-                logger.debug("serial write: %s", msg)
-                writer.write(msg)
+                serial_write(writer, GW_SEND + pack_message("A", id))
 
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
@@ -173,9 +161,7 @@ async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
 
 async def gateway_heartbeat(writer):
     while True:
-        msg = GW_CONTROL + b"H\n"
-        logger.debug("serial write: %s", msg)
-        writer.write(msg)
+        serial_write(writer, GW_CONTROL + b"H\n")
         await asyncio.sleep(15)
 
 async def gateway_heartbeat_watch(status_queue, heartbeats):
@@ -217,6 +203,10 @@ async def run_serial_comms(app: web.Application):
     app['gateway'] = gateway_data
     yield
     logger.debug("Done")
+
+def serial_write(writer, msg):
+    logger.debug("serial write: %s", msg)
+    writer.write(msg)
 
 def pack_message(key: str, to_id: int, value: str | None = None, extra_val: None | int = None) -> bytes:
     buf = struct.pack("<cl", key[0].encode(encoding='utf-8'), to_id)
