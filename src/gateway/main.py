@@ -3,11 +3,13 @@
 import asyncio
 import csv
 import datetime as dt
+import json
 import logging
 from pathlib import Path
 import struct
 
 from aiohttp import web
+import numpy
 import serial_asyncio
 
 from config import get_config
@@ -25,6 +27,9 @@ provision_log_path = Path(config['provisioning']['path'])
 
 GW_SEND = b"GWS"
 GW_CONTROL = b"GWC"
+
+CORS_ALLOW = "http://localhost:3000"
+CORS_HEADER = {"Access-Control-Allow-Origin": CORS_ALLOW}
 
 async def index(_):
     raise web.HTTPFound(location='index.html')
@@ -123,6 +128,18 @@ async def provision_ids_send(request):
 
     return web.json_response({})
 
+async def set_pattern(request):
+    body = await request.json()
+    pattern = json.loads(body['pattern'])
+    rows = int(body['rows'])
+    cols = int(body['cols'])
+    pattern_arr = numpy.array(pattern).reshape(rows, cols, -1)
+
+    logger.info(f"Received pattern {pattern_arr.shape=}")
+    #print(pattern_arr[:,:,0]) # frame zero
+
+    return web.json_response({}, headers=CORS_HEADER)
+
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
         msg = await r.readuntil(b'\n')
@@ -202,6 +219,7 @@ def main():
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.post('/prov_send', provision_ids_send)])
+    app.add_routes([web.post('/set_pattern', set_pattern)])
     app.add_routes([web.get('/check', check_status)])
     app.add_routes([web.get('/', index)])
     app.add_routes([web.static('/', Path('static'))])
