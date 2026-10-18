@@ -131,7 +131,7 @@ async def set_pattern(request):
 
     for i in range(pattern_arr.shape[2]):
         await show_pattern_frame(pattern_arr[:,:,i], request.app['gateway']['serial_writer'])
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)
 
     return web.json_response({}, headers=CORS_HEADER)
 
@@ -144,6 +144,7 @@ async def show_pattern_frame(frame: numpy.typing.NDArray, writer):
             if frame[row, col] == 1:
                 id = RowColToId(row+1, col+1)
                 serial_write(writer, GW_SEND + pack_message("A", id))
+                await asyncio.sleep(0.003)
 
 async def serial_receiver(r, queues: dict[str,asyncio.Queue]):
     while True:
