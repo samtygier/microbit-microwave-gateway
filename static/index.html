@@ -5,8 +5,9 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave, call_set_config, gateway_status_check, run_provision, send_provision } from "./gateway.js";
+    import { call_wave, call_swave, call_set_config, gateway_status_check, run_provision, send_provision } from "./gateway.js";
     window.call_wave = call_wave;
+    window.call_swave = call_swave;
     window.call_set_config = call_set_config;
     window.run_provision = run_provision;
     window.send_provision = send_provision;
@@ -14,13 +15,25 @@
     setTimeout(gateway_status_check, 1000)
     setInterval(gateway_status_check, 20_000);
   </script>
-  <h1>Run wave</h1>
+  <h1>Run</h1>
+  <input id="form_wave_delay" type="number" value="1000"><br>
+
+  <h2>Simple wave</h2>
   <input id="form_wave_row" type="text" value="A">
   <input id="form_wave_start" type="number" value="1">
   <input id="form_wave_stop" type="number" value="5"><br>
-
-  <input id="form_wave_delay" type="number" value="1000"><br>
   <button type="button" onclick="call_wave()">Run</button>
+
+  <h2>Straight wave</h2>
+  <input id="form_swave_rstart" type="text" value="A">
+  <input id="form_swave_rstop" type="text" value="J">
+  <input id="form_swave_cstart" type="number" value="1">
+  <input id="form_swave_cstop" type="number" value="26"><br>
+  Start from
+  <button type="button" onclick="call_swave('left')">Left</button>
+  <button type="button" onclick="call_swave('right')">Right</button>
+  <button type="button" onclick="call_swave('top')">Top</button>
+  <button type="button" onclick="call_swave('bottom')">Bottom</button>
 
   <h1>Config</h1>
 
@@ -39,10 +52,12 @@
 
   <h1>Provision</h1>
 
+  Collect:
   <input id="form_prov_row" type="text" value="A" size="2">
   <input id="form_prov_col" type="number" value="1" min="1" max="50">
   <button type="button" onclick="run_provision()">Collect</button><br>
 
+  Send:
   <input id="form_prov_only" type="text" value="A" size="5">
   <button type="button" onclick="send_provision()">Send</button><br>
 

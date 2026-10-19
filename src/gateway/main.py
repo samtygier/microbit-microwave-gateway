@@ -50,6 +50,34 @@ async def wave(request: web.Request):
         await asyncio.sleep(delay / 1000)
     return web.Response(text="done")
 
+async def swave(request: web.Request):
+    body = await request.json()
+    rstart = body["rstart"].strip()
+    rstop = body["rstop"].strip()
+    cstart = int(body["cstart"])
+    cstop = int(body["cstop"])
+
+    delay = int(body["delay"])
+    direction = body["direction"]
+    writer = request.app['gateway']['serial_writer']
+
+    match direction:
+        case "left":
+            steps = [(0, c) for c in range(cstart, cstop+1)]
+        case "right":
+            steps = [(0, c) for c in range(cstop, cstart-1, -1)]
+        case "bottom":
+            steps = [(r, 0) for r in range(row_a2i(rstart), row_a2i(rstop)+1)]
+        case "top":
+            steps = [(r, 0) for r in range(row_a2i(rstop), row_a2i(rstart)-1, -1)]
+
+    for r, c in steps:
+            id = RowColToId(r, c)
+            serial_write(writer, GW_SEND + pack_message("A", id))
+            await asyncio.sleep(delay / 1000)
+    return web.Response(text="done")
+
+
 async def set_config(request: web.Request):
     body = await request.json()
     writer = request.app['gateway']['serial_writer']
@@ -226,9 +254,14 @@ def pack_message(key: str, to_id: int, value: str | None = None, extra_val: None
 def RowColToId(row: int| str, col: int) -> int:
     print(f"RowColToId {row=} {col=}")
     if isinstance(row, str):
-        row = ord(row[0].lower()) - ord("a") + 1
+        row = row_a2i(row)
 
     return (256 * row) + col
+
+def row_a2i(row: str) -> int:
+    row = ord(row[0].lower()) - ord("a") + 1
+    if row > 8: row -= 1 # No row I
+    return row
 
 def clear_queue(queue: asyncio.Queue):
     while True:
@@ -253,6 +286,7 @@ def main():
     app.cleanup_ctx.append(run_serial_comms)
 
     app.add_routes([web.post('/wave', wave)])
+    app.add_routes([web.post('/swave', swave)])
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.post('/prov_send', provision_ids_send)])

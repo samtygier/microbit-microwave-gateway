@@ -13,6 +13,23 @@ export async function call_wave(){
     });
 }
 
+export async function call_swave(direction){
+    let data = {}
+    data["rstart"] = document.getElementById("form_swave_rstart").value;
+    data["rstop"] = document.getElementById("form_swave_rstop").value;
+    data["cstart"] = document.getElementById("form_swave_cstart").value;
+    data["cstop"] = document.getElementById("form_swave_cstop").value;
+    data["delay"] = document.getElementById("form_wave_delay").value;
+    data["direction"] = direction;
+
+    console.log(`call_swave ${data}`);
+
+    const response = await fetch("/swave", {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+}
+
 export async function call_set_config(config_name, form_name){
     const config_value = document.getElementById(form_name).value;
     console.log(`call_set_config ${config_name} ${config_value}`);
