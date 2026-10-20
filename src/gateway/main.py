@@ -104,7 +104,7 @@ async def check_status(request: web.Request):
     return web.json_response(status_result)
 
 async def provision_ids(request):
-    prov_queue = request.app['serial_response_queue_prov']
+    prov_queue = request.app['gateway']['serial_response_queue_prov']
     clear_queue(prov_queue)
     body = await request.json()
     writer = request.app['gateway']['serial_writer']
