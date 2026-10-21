@@ -46,6 +46,7 @@ export async function gateway_status_check(){
         .then(function(result){
             document.getElementById("status_gateway").innerText = result['gateway']
             document.getElementById("status_pattern").innerText = result['pattern_info']
+            document.getElementById("status_microbits").innerText = result['microbits']
         })
         .catch((error) => {
             document.getElementById("status_gateway").innerText = error

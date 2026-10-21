@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 import struct
 import time
+from typing import Iterable
 
 from aiohttp import web
 import numpy
@@ -97,6 +98,14 @@ async def check_status(request: web.Request):
         status_result['gateway'] = "Good"
     else:
         status_result['gateway'] = f"Last heartbeat {int(now - heartbeats['gateway'])}s ago"
+
+    active_positions = [ pos for pos, last_heartbeat in heartbeats.items()
+                        if last_heartbeat > stale and pos != 'gateway']
+
+    active_map = pos_layout(active_positions)
+    status_result['microbits'] = active_map
+    print(active_positions)
+    print(active_map)
 
     pattern_shape = request.app['gateway']['pattern']['frames'].shape
     status_result["pattern_info"] = f"{pattern_shape[0]}x{pattern_shape[1]} {pattern_shape[2]} frames"
@@ -208,6 +217,9 @@ async def gateway_heartbeat_watch(status_queue, heartbeats):
 
         if received == "GWCH":
             heartbeats['gateway'] = time.monotonic()
+        elif received.startswith("GWCH"):
+            mb_pos =  bytes.fromhex(received[16:]).decode("utf-8")
+            heartbeats[mb_pos] = time.monotonic()
 
 
 async def run_serial_comms(app: web.Application):
@@ -337,23 +349,25 @@ def check_provisioning():
             by_serial[serial] = (serial, pos)
             by_pos[pos] = (serial, pos)
 
-    rows = {pos[0] for pos in by_pos}
+    print(pos_layout(by_pos.keys()))
+
+def pos_layout(positions: Iterable[str]) -> str:
+    out = ""
+    rows = {pos[0] for pos in positions}
     rows = sorted(list(rows))
-    cols = {int(pos[1:]) for pos in by_pos}
+    cols = {int(pos[1:]) for pos in positions}
     cols = sorted(list(cols))
-    print(f"{rows}")
-    print(f"{cols}")
+
     for row in reversed(rows):
-        print(f"{row}: ", end="")
+        out += f"{row}: "
         for col in cols:
             pos = f"{row}{col}"
-            if pos in by_pos:
-                print(f"{col} ", end="")
+            if pos in positions:
+                out += f"{col} "
             else:
-                print(f"{"_"*len(str(col))} ", end="")
-        print()
-
-
+                out += f"{"_"*len(str(col))} "
+        out += "\n"
+    return out
 
 if __name__ == "__main__":
     check_provisioning()
