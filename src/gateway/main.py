@@ -144,6 +144,14 @@ async def provision_ids_send(request):
 
     return web.json_response({})
 
+async def send_control(request):
+    body = await request.json()
+    ikey = body["ikey"]
+    writer = request.app['gateway']['serial_writer']
+    serial_write(writer, GW_SEND + pack_message("*", 0, ikey))
+    return web.json_response({})
+
+
 async def set_pattern(request):
     body = await request.json()
     pattern = json.loads(body['pattern'])
@@ -290,6 +298,7 @@ def main():
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.post('/prov_send', provision_ids_send)])
+    app.add_routes([web.post('/send_control', send_control)])
     app.add_routes([web.post('/set_pattern', set_pattern)])
     app.add_routes([web.get('/check', check_status)])
     app.add_routes([web.get('/', index)])

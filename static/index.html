@@ -5,12 +5,13 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave, call_swave, call_set_config, gateway_status_check, run_provision, send_provision } from "./gateway.js";
+    import { call_wave, call_swave, call_set_config, gateway_status_check, run_provision, send_provision, send_control } from "./gateway.js";
     window.call_wave = call_wave;
     window.call_swave = call_swave;
     window.call_set_config = call_set_config;
     window.run_provision = run_provision;
     window.send_provision = send_provision;
+    window.send_control = send_control;
 
     setTimeout(gateway_status_check, 1000)
     setInterval(gateway_status_check, 20_000);
@@ -66,6 +67,10 @@
   <h1>Status</h1>
   <p>Gateway: <span id="status_gateway">...</span></p>
   <p>Pattern: <span id="status_pattern">...</span></p>
+
+  <h1>Control</h1>
+  <p><button type="button" onclick="send_control('R')">Reboot</button></p>
+  <p><button type="button" onclick="send_control('H')">Heartbeat</button></p>
 
  </body>
 </html>

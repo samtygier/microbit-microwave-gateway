@@ -79,3 +79,10 @@ export async function send_provision(){
             body: `{"prov_only": "${prov_only}"}`
         });
 }
+
+export async function send_control(ikey){
+    const response = await fetch("/send_control", {
+            method: "POST",
+            body: `{"ikey": "${ikey}"}`
+        });
+}
