@@ -72,10 +72,13 @@ async def swave(request: web.Request):
         case "top":
             steps = [(r, 0) for r in range(row_a2i(rstop), row_a2i(rstart)-1, -1)]
 
+    request.app['gateway']['run'] = True
     for r, c in steps:
             id = RowColToId(r, c)
             serial_write(writer, GW_SEND + pack_message("A", id))
             await asyncio.sleep(delay / 1000)
+            if not request.app['gateway']['run']:
+                break
     return web.Response(text="done")
 
 async def run_pattern(request: web.Request):
@@ -85,14 +88,20 @@ async def run_pattern(request: web.Request):
     writer = request.app['gateway']['serial_writer']
 
     pattern_arr = request.app['gateway']['pattern']['frames']
+    request.app['gateway']['run'] = True
 
     for _ in range(repeat):
         for i in range(pattern_arr.shape[2]):
             await show_pattern_frame(pattern_arr[:,:,i], writer)
             await asyncio.sleep(delay / 1000)
+            if not request.app['gateway']['run']:
+                break
 
     return web.Response(text="done")
 
+async def stop_pattern(request: web.Request):
+    request.app['gateway']['run'] = False
+    return web.Response(text="done")
 
 async def set_config(request: web.Request):
     body = await request.json()
@@ -263,6 +272,7 @@ async def run_serial_comms(app: web.Application):
     hbw_task = asyncio.create_task(gateway_heartbeat_watch(queue_status, gateway_data['heartbeats']))
 
     gateway_data['pattern'] = {"frames": numpy.array([[[0]]])}
+    gateway_data['run'] = False
 
     app['gateway'] = gateway_data
     yield
@@ -323,6 +333,7 @@ def main():
     app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.post('/swave', swave)])
     app.add_routes([web.post('/run_pattern', run_pattern)])
+    app.add_routes([web.post('/stop_pattern', stop_pattern)])
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.post('/prov_send', provision_ids_send)])

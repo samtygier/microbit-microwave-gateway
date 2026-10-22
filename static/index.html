@@ -5,10 +5,11 @@
  </head>
  <body>
   <script type="module">
-    import { call_wave, call_swave, call_run_pattern, call_set_config, gateway_status_check, run_provision, send_provision, send_control } from "./gateway.js";
+    import { call_wave, call_swave, call_run_pattern, call_stop_pattern, call_set_config, gateway_status_check, run_provision, send_provision, send_control } from "./gateway.js";
     window.call_wave = call_wave;
     window.call_swave = call_swave;
     window.call_run_pattern = call_run_pattern;
+    window.call_stop_pattern = call_stop_pattern;
     window.call_set_config = call_set_config;
     window.run_provision = run_provision;
     window.send_provision = send_provision;
@@ -40,6 +41,7 @@
   <h2>Pattern</h2>
   Repeat: <input id="form_pattern_repeat" type="number" value="1">
   <button type="button" onclick="call_run_pattern()">Run</button>
+  <button type="button" onclick="call_stop_pattern()">Stop</button>
 
   <h1>Config</h1>
 

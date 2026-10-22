@@ -41,6 +41,14 @@ export async function call_run_pattern(){
     });
 }
 
+export async function call_stop_pattern(){
+    let data = {}
+    const response = await fetch("/stop_pattern", {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+}
+
 export async function call_set_config(config_name, form_name){
     const config_value = document.getElementById(form_name).value;
     console.log(`call_set_config ${config_name} ${config_value}`);
