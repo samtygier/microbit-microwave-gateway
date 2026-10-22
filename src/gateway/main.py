@@ -78,6 +78,21 @@ async def swave(request: web.Request):
             await asyncio.sleep(delay / 1000)
     return web.Response(text="done")
 
+async def run_pattern(request: web.Request):
+    body = await request.json()
+    repeat = int(body["repeat"])
+    delay = int(body["delay"])
+    writer = request.app['gateway']['serial_writer']
+
+    pattern_arr = request.app['gateway']['pattern']['frames']
+
+    for _ in range(repeat):
+        for i in range(pattern_arr.shape[2]):
+            await show_pattern_frame(pattern_arr[:,:,i], writer)
+            await asyncio.sleep(delay / 1000)
+
+    return web.Response(text="done")
+
 
 async def set_config(request: web.Request):
     body = await request.json()
@@ -174,9 +189,9 @@ async def set_pattern(request):
 
     request.app['gateway']['pattern']['frames'] = pattern_arr
 
-    for i in range(pattern_arr.shape[2]):
-        await show_pattern_frame(pattern_arr[:,:,i], request.app['gateway']['serial_writer'])
-        await asyncio.sleep(1.0)
+    #for i in range(pattern_arr.shape[2]):
+    #    await show_pattern_frame(pattern_arr[:,:,i], request.app['gateway']['serial_writer'])
+    #    await asyncio.sleep(1.0)
 
     return web.json_response({}, headers=CORS_HEADER)
 
@@ -307,6 +322,7 @@ def main():
 
     app.add_routes([web.post('/wave', wave)])
     app.add_routes([web.post('/swave', swave)])
+    app.add_routes([web.post('/run_pattern', run_pattern)])
     app.add_routes([web.post('/config', set_config)])
     app.add_routes([web.post('/prov', provision_ids)])
     app.add_routes([web.post('/prov_send', provision_ids_send)])
