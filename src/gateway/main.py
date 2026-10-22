@@ -105,11 +105,11 @@ async def set_config(request: web.Request):
 
 async def check_status(request: web.Request):
     now = time.monotonic()
-    stale = now - 30
+    stale = now - 60
     heartbeats = request.app['gateway']['heartbeats']
 
     status_result = {}
-    if heartbeats['gateway'] > stale:
+    if heartbeats['gateway'] > 20:
         status_result['gateway'] = "Good"
     else:
         status_result['gateway'] = f"Last heartbeat {int(now - heartbeats['gateway'])}s ago"
