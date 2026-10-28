@@ -35,7 +35,7 @@ radio.onReceivedBuffer(function(buf: Buffer){
     const key = String.fromCharCode(head[0])
     const id = head[1]
     if(id != control.deviceSerialNumber()){
-        serial.writeLine(`GW: message not for me: ${id} != ${control.deviceSerialNumber()}`)
+        //serial.writeLine(`GW: message not for me: ${id} != ${control.deviceSerialNumber()}`)
         return
     }
     if(key != "*"){
@@ -43,12 +43,16 @@ radio.onReceivedBuffer(function(buf: Buffer){
     }
     const ikey = String.fromCharCode(buf.unpack("B", 5)[0])
     const from_id = radio.lastPacket.serial
-    serial.writeLine(`GW: message for me: ${id} == ${control.deviceSerialNumber()}`)
-    serial.writeLine(`GW: from: ${from_id}`)
-    serial.writeLine(`GW: msg: ${ikey}`)
+    //serial.writeLine(`GW: message for me: ${id} == ${control.deviceSerialNumber()}`)
+    //serial.writeLine(`GW: from: ${from_id}`)
+    //serial.writeLine(`GW: msg: ${ikey}`)
     switch(ikey){
         case "Q":
             safeSerialWrite(`GWCQ${from_id}`)
+            break
+        case "H":
+            let from_pos = buf.toHex()
+            safeSerialWrite(`GWCH${from_pos}`)
             break
     }
 })
@@ -59,7 +63,7 @@ function safeSerialWrite(msg: string){
 
 serial.setRxBufferSize(128)
 serial.setTxBufferSize(128)
-basic.showString("GW1", 50)
+basic.showString("GW2", 50)
 radio.setGroup(57)
 radio.setTransmitPower(7)
 radio.setTransmitSerialNumber(true)
