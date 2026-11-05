@@ -6,6 +6,10 @@ port = 8080
 dev = '/dev/ttyACM0'
 baudrate = 115200
 
+[cors]
+# Origins of the pattern_visualiser web-app allowed to call the gateway API
+allowed_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
 [logging]
 level = "debug"
 

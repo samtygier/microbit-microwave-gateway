@@ -30,8 +30,32 @@ provision_log_path = Path(config['provisioning']['path'])
 GW_SEND = b"GWS"
 GW_CONTROL = b"GWC"
 
-CORS_ALLOW = "http://localhost:3000"
-CORS_HEADER = {"Access-Control-Allow-Origin": CORS_ALLOW}
+CORS_ALLOWED_ORIGINS = set(config.get('cors', {}).get(
+    'allowed_origins', ["http://localhost:3000", "http://127.0.0.1:3000"]))
+
+@web.middleware
+async def cors_middleware(request: web.Request, handler):
+    origin = request.headers.get("Origin")
+    allowed = origin is not None and ("*" in CORS_ALLOWED_ORIGINS or origin in CORS_ALLOWED_ORIGINS)
+
+    if request.method == "OPTIONS" and "Access-Control-Request-Method" in request.headers:
+        # Preflight: answer directly, no route is registered for OPTIONS.
+        response = web.Response(status=204 if allowed else 403)
+    else:
+        try:
+            response = await handler(request)
+        except web.HTTPException as exc:
+            response = exc  # HTTP errors need CORS headers too, else the browser hides them
+
+    if allowed:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Vary"] = "Origin"
+
+    if isinstance(response, web.HTTPException):
+        raise response
+    return response
 
 async def index(_):
     raise web.HTTPFound(location='index.html')
@@ -202,7 +226,7 @@ async def set_pattern(request):
     #    await show_pattern_frame(pattern_arr[:,:,i], request.app['gateway']['serial_writer'])
     #    await asyncio.sleep(1.0)
 
-    return web.json_response({}, headers=CORS_HEADER)
+    return web.json_response({})
 
 async def show_pattern_frame(frame: numpy.typing.NDArray, writer):
     if frame.ndim != 2:
@@ -327,7 +351,7 @@ def load_provisioning() -> dict[int, str]:
     return id_lookup
 
 def main():
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.cleanup_ctx.append(run_serial_comms)
 
     app.add_routes([web.post('/wave', wave)])
